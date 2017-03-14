@@ -10,9 +10,10 @@
 Components.utils.import('resource://gre/modules/PlexusServices.jsm');
 
 
-PlexusServices.getServiceList('cloud-storage').then(function(successMessage) {
-    console.log("Yay! " + successMessage);
-    alert(successMessage);
+PlexusServices.getServiceList('cloud-storage').then(function(message) {
+    console.log("Yay! " + message);
 });
 
-//alert(PlexusServices.getServiceList('cloud-storage'));
+PlexusServices.setCurrentService('cloud-storage', 'MAC_DROPBOX');
+
+console.log(PlexusServices.getCurrentService('cloud-storage'));
