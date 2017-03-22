@@ -11,29 +11,50 @@ this.EXPORTED_SYMBOLS = ["PlexusServices"];
 
 Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 Cu.import("resource://gre/modules/Services.jsm");
+
 XPCOMUtils.defineLazyModuleGetter(this, "OS",
   "resource://gre/modules/osfile.jsm");
 
+/**
+ * Global functions
+ */
+
+// TBD: Using branding as place holder URI to access icon files
+function getIconURI(name) {
+  let dirPath = "chrome://branding/content/";
+  return dirPath + name;
+}
+
 // Cloud Storage Services metadata
 var PlexusStorageServices = {
+    // Default location of a dropbox folder is /Users/<USERNAME>/Dropbox
+    // If a user changes dropbox folder location, it can be found from
+    // ~/.dropbox/info.json Path variable
+
     MAC_DROPBOX: {
-      displayname: "DropBox", // Storage Service Name
+      displayName: "DropBox", // Storage Service Name
       get path() { return OS.Constants.Path.homeDir ?
                           OS.Path.join(OS.Constants.Path.homeDir, ".dropbox/") :
                           '' },
-      dataURI: "data:image/png;base64,iBsdf...", // TBD: Icon handle multiple sizes?
+      icon: {
+        get default() { return getIconURI("dropbox_128x128.png") },
+        get tiny() { return getIconURI("dropbox_30x30.png") }
+      },
       typeSpecificData: {
         photo: "/Photos",
         screenshot: "/Screenshots"
       },
     },
 
-    WINDOW_DROPBOX: {
-      displayname: "DropBox", // Storage Service Name
+    WINNT_DROPBOX: {
+      displayName: "DropBox",
       get path() { return OS.Constants.Path.winAppDataDir ?
                           OS.Path.join(OS.Constants.Path.winAppDataDir, "Dropbox") :
                           '' },
-      dataURI: "data:image/png;base64,iBsdf...",
+      icon: {
+        get default() { return getIconURI("winnt_128x128.png") },
+        get tiny() { return getIconURI("winnt_30x30.png") }
+      },
       typeSpecificData: {
         photo: "/Photos",
         screenshot: "/Screenshots"
@@ -41,11 +62,25 @@ var PlexusStorageServices = {
     },
 
     MAC_GDRIVE: {
-      displayname: "Google Drive", // Storage Service Name
-      get path() { return OS.Constants.Path.homeDir ?
-                          OS.Path.join(OS.Constants.Path.homeDir, ".gdrive/") :
+      displayName: "Google Drive",
+      get path() { return OS.Constants.Path.macUserLibDir ?
+                          OS.Path.join(OS.Constants.Path.macUserLibDir, "Application Support/Google/Drive") :
                           '' },
-      dataURI: "data:image/png;base64,isdf...",
+      icon: {
+        get default() { return getIconURI("gdrive_128x128.png") },
+        get tiny() { return getIconURI("gdrive_30x30.png") }
+      },
+    },
+
+    WINNT_GDRIVE: {
+      displayName: "Google Drive",
+      get path() { return OS.Constants.Path.winAppDataDir ?
+                          OS.Path.join(OS.Constants.Path.winAppDataDir, "Local\Google\Drive") :
+                          '' },
+      icon: {
+        get default() { return getIconURI("gdrive_128x128.png") },
+        get tiny() { return getIconURI("gdrive_30x30.png") }
+      },
     },
 };
 
@@ -59,32 +94,53 @@ this.PlexusServices = {
    */
   checkIfAssetExist(path) {
     return new Promise((resolve, reject) => {
-      OS.File.stat(path).then((exists) => {
-        if (exists) {
-          resolve(exists);
-        }
-      }).catch(e => { debug("\n Asset not found");});
+      OS.File.exists(path).then((exists) => {
+        resolve(exists);
+      }).catch(e => { debug("\n Error while looking for asset");});
     });
   },
 
   /**
    *
-   * Returns Promise containing data with local storage
+   * Returns Promise containing data map with local storage
    * services found on machine.
    */
   getStorageServices() {
     return new Promise(function(resolve, reject) {
-      let result = new Map();
 
-      Object.getOwnPropertyNames(this._cloudStorage).forEach((prop) => {
-        this.checkIfAssetExist(this._cloudStorage[prop].path).then((info) => {
-          if (info) {
+      let result = new Map();
+      // Returns array of promises with data as true or false for storage drive
+      // exists in the same order as enumerable property provided
+
+      let arrPromises =
+      Object.getOwnPropertyNames(this._cloudStorage).map(prop => {
+        return this.checkIfAssetExist(this._cloudStorage[prop].path).then(
+          function onSuccess(exist) {
+            return exist;
+          },
+          function onError(err) {
+            debug("Error ", err);
+          }
+        );
+      });
+
+
+      Promise.all(arrPromises).then(results => {
+        // Array of storage keys
+        let storageKeys = Object.keys(this._cloudStorage);
+
+        // update result map for each storage key with exist as true
+        // and the metdata from _cloudStorage
+        results.forEach((exist, idx) => {
+          if (exist) {
+            let key = storageKeys[idx];
             // TBD: consider return of limited set of data to optimize scan?
-            result.set(prop, this._cloudStorage[prop]);
+            result.set(key, this._cloudStorage[key]);
           }
         });
+
+        resolve(result);
       });
-      resolve(result);
     }.bind(this));
   },
 
@@ -95,17 +151,22 @@ this.PlexusServices = {
    */
 
   getCurrentStorageService() {
+    // Storing as self as scope of this changing to BackStagePass while
+    // accessing Services.prefs.getCharPref("plexus.services.storage"), why?
+    let self = this;
+
     if (Services.prefs.getCharPref("plexus.services.storage")) {
       let key = Services.prefs.getCharPref("plexus.services.storage");
-      // TBD: Use key to retrieve metadata from PlexusStorageServices
-      return key;
+
+      // Use key to retrieve metadata from PlexusStorageServices
+      return self._cloudStorage.hasOwnProperty(key) ?
+        self._cloudStorage[key] : null;
     }
   },
 
   /**
    *
    * set storage service pref settings with provided key
-   * TBD: can a user set multiple storage or pick one as default?
    *
    */
   setCurrentStorageServices(key) {
