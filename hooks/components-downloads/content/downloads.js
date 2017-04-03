@@ -927,6 +927,11 @@ const DownloadsView = {
     let viewItem = new DownloadsViewItem(download, element);
     this._visibleViewItems.set(download, viewItem);
     this._itemsForElements.set(element, viewItem);
+
+    if (!this.richListBox) {
+      this.richListBox = document.getElementById("downloadsListBox");
+    }
+
     if (aNewest) {
       this.richListBox.insertBefore(element, this.richListBox.firstChild);
     } else {
@@ -1165,12 +1170,20 @@ DownloadsViewItem.prototype = {
           return false;
         }
 
+        // TBD: Uncomment the code once the logic to open
+        // file with  plexus first download path works
+        /* else if (this.plexusFirstDownloadFile) {
+          return true;
+        } */
+
         let file = new FileUtils.File(this.download.target.path);
         return file.exists();
       }
       case "downloadsCmd_show": {
         let file = new FileUtils.File(this.download.target.path);
         if (file.exists()) {
+          return true;
+        } else if (this.plexusFirstDownloadFile) {
           return true;
         }
 
@@ -1223,6 +1236,7 @@ DownloadsViewItem.prototype = {
   },
 
   downloadsCmd_open() {
+    // TBD: Needs to pass the moved file path for first download ???
     this.download.launch().catch(Cu.reportError);
 
     // We explicitly close the panel here to give the user the feedback that
@@ -1234,7 +1248,10 @@ DownloadsViewItem.prototype = {
   },
 
   downloadsCmd_show() {
-    let file = new FileUtils.File(this.download.target.path);
+    let destPath = this.plexusFirstDownloadFile;
+    let file = destPath ? new FileUtils.File(destPath) :
+            new FileUtils.File(this.download.target.path);
+
     DownloadsCommon.showDownloadedFile(file);
 
     // We explicitly close the panel here to give the user the feedback that

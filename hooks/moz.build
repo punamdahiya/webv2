@@ -18,6 +18,8 @@ EXPORTS.mozilla.dom += [
 
 EXTRA_JS_MODULES += [
     'ISO8601DateUtils.jsm',
+    'PlexusServices.jsm', # To test load PlexusServices JSM module
+    'PlexusStorage.jsm',
     'XPCOMUtils.jsm',
 ]
 

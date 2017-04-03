@@ -21,6 +21,7 @@
 <script type="application/javascript" src="chrome://browser/content/browser-gestureSupport.js"/>
 <script type="application/javascript" src="chrome://browser/content/browser-media.js"/>
 <script type="application/javascript" src="chrome://browser/content/browser-places.js"/>
+<script type="application/javascript" src="chrome://browser/content/browser-plexus.js"/>
 <script type="application/javascript" src="chrome://browser/content/browser-plugins.js"/>
 <script type="application/javascript" src="chrome://browser/content/browser-refreshblocker.js"/>
 <script type="application/javascript" src="chrome://browser/content/browser-safebrowsing.js"/>

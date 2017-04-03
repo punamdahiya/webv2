@@ -23,6 +23,8 @@ XPCOMUtils.defineLazyModuleGetter(this, "DownloadUtils",
                                   "resource://gre/modules/DownloadUtils.jsm");
 XPCOMUtils.defineLazyModuleGetter(this, "DownloadsCommon",
                                   "resource:///modules/DownloadsCommon.jsm");
+XPCOMUtils.defineLazyModuleGetter(this, "FileUtils",
+                                  "resource://gre/modules/FileUtils.jsm");
 XPCOMUtils.defineLazyModuleGetter(this, "OS",
                                   "resource://gre/modules/osfile.jsm");
 
@@ -76,6 +78,30 @@ this.DownloadsViewUI.DownloadElementShell.prototype = {
            (this.download.succeeded ? "&state=normal" : "");
   },
 
+  get storage() {
+    // TBD: check with complete path dynamically returned from Plexus API
+    if (OS.Path.dirname(this.download.target.path).includes('Dropbox')) {
+      return "chrome://browser/content/plexus/dropbox_18x18.png";
+    } else if( this.plexusFirstDownloadFile) {
+      return "chrome://browser/content/plexus/dropbox_18x18.png";
+    } else {
+      return null;
+    }
+  },
+
+  get plexusFirstDownloadFile() {
+    // this.download.target.path still points to default folder
+    // but the file is moved to dropbox as part of first download
+    // after setting pref storage service in prompt
+    let destPath = OS.Constants.Path.homeDir ?
+                    OS.Path.join(OS.Constants.Path.homeDir,
+                    "Dropbox", OS.Path.basename(this.download.target.path)) : '';
+    let file = new FileUtils.File(destPath);
+    return file.exists() ? destPath : null;
+  },
+
+
+
   /**
    * The user-facing label for the download. This is normally the leaf name of
    * the download target file. In case this is a very old history download for
@@ -103,6 +129,10 @@ this.DownloadsViewUI.DownloadElementShell.prototype = {
     return this.__progressElement;
   },
 
+  showPlexusStorageIcon() {
+    this.element.setAttribute("storage", this.storage);
+  },
+
   /**
    * Processes a major state change in the user interface, then proceeds with
    * the normal progress update. This function is not called for every progress
@@ -111,6 +141,7 @@ this.DownloadsViewUI.DownloadElementShell.prototype = {
   _updateState() {
     this.element.setAttribute("displayName", this.displayName);
     this.element.setAttribute("image", this.image);
+    this.element.setAttribute("storage", this.storage);
     this.element.setAttribute("state",
                               DownloadsCommon.stateOfDownload(this.download));
 
@@ -135,7 +166,7 @@ this.DownloadsViewUI.DownloadElementShell.prototype = {
   _updateProgress() {
     if (this.download.succeeded) {
       // We only need to add or remove this attribute for succeeded downloads.
-      if (this.download.target.exists) {
+      if (this.download.target.exists || this.plexusFirstDownloadFile) {
         this.element.setAttribute("exists", "true");
       } else {
         this.element.removeAttribute("exists");
@@ -216,7 +247,7 @@ this.DownloadsViewUI.DownloadElementShell.prototype = {
     } else {
       let stateLabel;
 
-      if (this.download.succeeded && !this.download.target.exists) {
+      if (this.download.succeeded && !this.download.target.exists && !this.plexusFirstDownloadFile) {
         stateLabel = s.fileMovedOrMissing;
         hoverStatus = stateLabel;
       } else if (this.download.succeeded) {
