@@ -38,4 +38,4 @@ function showImage(src) {
 }
 
 // TBD: Resource URL to import icons?
-showImage('chrome://branding/content/dropbox_128x128.png')
+showImage('chrome://browser/content/plexus/dropbox_128x128.png')

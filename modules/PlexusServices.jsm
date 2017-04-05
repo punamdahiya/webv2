@@ -11,6 +11,7 @@ this.EXPORTED_SYMBOLS = ["PlexusServices"];
 
 Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 Cu.import("resource://gre/modules/Services.jsm");
+Cu.import("resource://gre/modules/FileUtils.jsm");
 
 XPCOMUtils.defineLazyModuleGetter(this, "OS",
   "resource://gre/modules/osfile.jsm");
@@ -19,9 +20,9 @@ XPCOMUtils.defineLazyModuleGetter(this, "OS",
  * Global functions
  */
 
-// TBD: Using branding as place holder URI to access icon files
+// URI to access icon files
 function getIconURI(name) {
-  let dirPath = "chrome://branding/content/";
+  let dirPath = "chrome://browser/content/plexus/";
   return dirPath + name;
 }
 
@@ -41,6 +42,7 @@ var PlexusStorageServices = {
         get tiny() { return getIconURI("dropbox_30x30.png") }
       },
       typeSpecificData: {
+        default: "/Downloads",
         photo: "/Photos",
         screenshot: "/Screenshots"
       },
@@ -56,6 +58,7 @@ var PlexusStorageServices = {
         get tiny() { return getIconURI("winnt_30x30.png") }
       },
       typeSpecificData: {
+        default: "/Downloads",
         photo: "/Photos",
         screenshot: "/Screenshots"
       },
@@ -70,6 +73,11 @@ var PlexusStorageServices = {
         get default() { return getIconURI("gdrive_128x128.png") },
         get tiny() { return getIconURI("gdrive_30x30.png") }
       },
+      typeSpecificData: {
+        default: "/Downloads",
+        photo: "/Photos",
+        screenshot: "/Screenshots"
+      },
     },
 
     WINNT_GDRIVE: {
@@ -80,6 +88,11 @@ var PlexusStorageServices = {
       icon: {
         get default() { return getIconURI("gdrive_128x128.png") },
         get tiny() { return getIconURI("gdrive_30x30.png") }
+      },
+      typeSpecificData: {
+        default: "/Downloads",
+        photo: "/Photos",
+        screenshot: "/Screenshots"
       },
     },
 };
@@ -154,22 +167,41 @@ this.PlexusServices = {
     // Storing as self as scope of this changing to BackStagePass while
     // accessing Services.prefs.getCharPref("plexus.services.storage"), why?
     let self = this;
-
-    if (Services.prefs.getCharPref("plexus.services.storage")) {
+    try {
       let key = Services.prefs.getCharPref("plexus.services.storage");
 
       // Use key to retrieve metadata from PlexusStorageServices
       return self._cloudStorage.hasOwnProperty(key) ?
         self._cloudStorage[key] : null;
+    } catch (ex) {
+      // Exception: Pref not set or found
+      return null;
     }
   },
+
+  hasPreferredStorageService() {
+    try {
+      return Services.prefs.getCharPref("plexus.services.storage");
+    } catch (ex) {
+      // Exception: Pref not set or found
+      return null;
+    }
+  },
+
 
   /**
    *
    * set storage service pref settings with provided key
    *
    */
-  setCurrentStorageServices(key) {
+  setCurrentStorageService(key) {
+    Services.prefs.setIntPref("browser.download.folderList", 2);
+    // TBD: Dynamically populate by getting value
+    // from PlexusStorageServices metadata
+    let downloadDir;
+    downloadDir = FileUtils.getDir("Home", ["Dropbox"]);
+    // Using download directory downloadDir.path
+    Services.prefs.setComplexValue("browser.download.dir", Ci.nsIFile, downloadDir);
     Services.prefs.setCharPref("plexus.services.storage", key);
   },
 
