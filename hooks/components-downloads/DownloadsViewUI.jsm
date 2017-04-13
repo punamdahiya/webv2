@@ -27,6 +27,8 @@ XPCOMUtils.defineLazyModuleGetter(this, "FileUtils",
                                   "resource://gre/modules/FileUtils.jsm");
 XPCOMUtils.defineLazyModuleGetter(this, "OS",
                                   "resource://gre/modules/osfile.jsm");
+XPCOMUtils.defineLazyModuleGetter(this, "PlexusStorage",
+                                  "resource://gre/modules/PlexusStorage.jsm");
 
 this.DownloadsViewUI = {
   /**
@@ -59,6 +61,10 @@ this.DownloadsViewUI.DownloadElementShell.prototype = {
    */
   element: null,
 
+  get plexusPrefStorage() {
+    return  PlexusStorage.getPreferredStorageService('cloud-storage');
+  },
+
   /**
    * URI string for the file type icon displayed in the download element.
    */
@@ -78,26 +84,35 @@ this.DownloadsViewUI.DownloadElementShell.prototype = {
            (this.download.succeeded ? "&state=normal" : "");
   },
 
+  // Use CloudStorage API to retrieve the icon chrome URL
   get storage() {
-    // TBD: check with complete path dynamically returned from Plexus API
-    if (OS.Path.dirname(this.download.target.path).includes('Dropbox')) {
-      return "chrome://browser/content/plexus/dropbox_18x18.png";
+    // get download path from cloud storage API
+    let path = this.plexusPrefStorage ? this.plexusPrefStorage.path : null;
+    if (OS.Path.dirname(this.download.target.path).includes(path)) {
+      return this.plexusPrefStorage.icon.default;
     } else if( this.plexusFirstDownloadFile) {
-      return "chrome://browser/content/plexus/dropbox_18x18.png";
+      return this.plexusPrefStorage.icon.default;
     } else {
       return null;
     }
   },
 
+  // HACK: Method to identify first downloaded file after cloud storage pref set
   get plexusFirstDownloadFile() {
     // this.download.target.path still points to default folder
     // but the file is moved to dropbox as part of first download
     // after setting pref storage service in prompt
-    let destPath = OS.Constants.Path.homeDir ?
-                    OS.Path.join(OS.Constants.Path.homeDir,
-                    "Dropbox", OS.Path.basename(this.download.target.path)) : '';
-    let file = new FileUtils.File(destPath);
-    return file.exists() ? destPath : null;
+    let destPath = this.plexusPrefStorage ?
+      OS.Path.join(this.plexusPrefStorage.path,
+                   this.plexusPrefStorage.typeSpecificData.default,
+                   OS.Path.basename(this.download.target.path)) : '';
+    try {
+      let file = new FileUtils.File(destPath);
+      return file.exists() ? destPath : null;
+    } catch (ex) {
+      // Exception: File not exist
+      return null;
+    }
   },
 
 

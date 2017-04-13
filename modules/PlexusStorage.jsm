@@ -122,36 +122,9 @@ this.PlexusStorage = {
     }
   },
 
-  _handleFirstDownload(chromeDoc, download) {
-    // HACK: This is needed for the first download when the user opted in to choose
-    // preferred storage service. Since the download is already initiated, we need to
-    // move that file to preferred storage folder
-    if (download.succeeded) {
-      let destPath = OS.Constants.Path.homeDir ?
-        OS.Path.join(OS.Constants.Path.homeDir,
-        "Dropbox", OS.Path.basename(download.target.path)) : '';
-
-      OS.File.move(download.target.path, destPath).then(() => {
-        debug('First download moved successfully');
-
-        if (chromeDoc.DownloadsView.richListBox) {
-          DownloadsViewUI.DownloadElementShell.prototype.element =
-            chromeDoc.DownloadsView.richListBox._currentItem;
-          DownloadsViewUI.DownloadElementShell.prototype.download = download;
-
-          // Show the Plexus preferred storage icon on the moved item
-          DownloadsViewUI.DownloadElementShell.prototype.showPlexusStorageIcon();
-        }
-
-      }).catch((reason) => { debug('Rejected file copy (' + reason + ') here.'); });
-    } else {
-      // TBD: Handle so that the file is moved after successful download
-      // inside view onDownloadChanged
-    }
-  },
-
   _showPromptUI(chromeDoc, download, prefService) {
-    let message = "Would you like to save this file to your DropBox Downloads folder?";
+    let message = "Would you like to save this file to your " +
+      prefService.value.displayName  + " Downloads folder?";
 
     let main_action = {
       label: "Save to " + prefService.value.displayName,
@@ -159,7 +132,7 @@ this.PlexusStorage = {
       callback: function() {
         // Set preferred storage service
         PlexusServices.setCurrentStorageService(prefService.key);
-        this._handleFirstDownload(chromeDoc, download);
+        this._handleFirstDownload(chromeDoc, prefService, download);
       }.bind(this),
     };
 
@@ -185,5 +158,42 @@ this.PlexusStorage = {
                                         notificationid, message, null,
                                         main_action, secondary_action, options);
 
+  },
+
+  _handleFirstDownload(chromeDoc, pref, download) {
+    // HACK: This is needed for the first download when the user opted in to choose
+    // preferred storage service. Since the download is already initiated, we need to
+    // move that file to preferred storage folder
+    // Use the prefService from calling function to get the destPath
+    // Need a methd to return default download folder path when passed key
+
+    if (download.succeeded) {
+      let downloadPath = PlexusServices.getFolderPathByType(pref.key, 'default');
+
+      // create download directory if it doesn't exist
+      OS.File.makeDir(downloadPath, {ignoreExisting: true}).then(() => {
+
+        let destPath = downloadPath ?
+        OS.Path.join(downloadPath, OS.Path.basename(download.target.path)) :
+        '';
+
+        OS.File.move(download.target.path, destPath).then(() => {
+
+          if (chromeDoc.DownloadsView.richListBox) {
+            DownloadsViewUI.DownloadElementShell.prototype.element =
+              chromeDoc.DownloadsView.richListBox._currentItem;
+            DownloadsViewUI.DownloadElementShell.prototype.download = download;
+
+            // Show the Plexus preferred storage icon on the moved item
+            // Pass the pref key to retrieve icon URL
+            DownloadsViewUI.DownloadElementShell.prototype.showPlexusStorageIcon();
+          }
+
+        }).catch((reason) => { debug('Rejected file move (' + reason + ') here.'); });
+      }).catch((reason) => { debug('Failed creating directory (' + reason + ') here.'); });
+    } else {
+      // TBD: Handle so that file is moved after successful download
+      // inside view onDownloadChanged
+    }
   },
 }

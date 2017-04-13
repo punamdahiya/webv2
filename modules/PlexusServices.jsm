@@ -25,6 +25,7 @@ function getIconURI(name) {
   let dirPath = "chrome://browser/content/plexus/";
   return dirPath + name;
 }
+// TBD: Move constants such as display name, icon file name in a separate config file?
 
 // Cloud Storage Services metadata
 var PlexusStorageServices = {
@@ -35,16 +36,16 @@ var PlexusStorageServices = {
     MAC_DROPBOX: {
       displayName: "DropBox", // Storage Service Name
       get path() { return OS.Constants.Path.homeDir ?
-                          OS.Path.join(OS.Constants.Path.homeDir, ".dropbox/") :
+                          OS.Path.join(OS.Constants.Path.homeDir, "Dropbox") :
                           '' },
       icon: {
-        get default() { return getIconURI("dropbox_128x128.png") },
+        get default() { return getIconURI("dropbox_18x18.png") },
         get tiny() { return getIconURI("dropbox_30x30.png") }
       },
       typeSpecificData: {
-        default: "/Downloads",
-        photo: "/Photos",
-        screenshot: "/Screenshots"
+        default: "Downloads",
+        photo: "Photos",
+        screenshot: "Screenshots"
       },
     },
 
@@ -54,13 +55,13 @@ var PlexusStorageServices = {
                           OS.Path.join(OS.Constants.Path.winAppDataDir, "Dropbox") :
                           '' },
       icon: {
-        get default() { return getIconURI("winnt_128x128.png") },
+        get default() { return getIconURI("winnt_18x18.png") },
         get tiny() { return getIconURI("winnt_30x30.png") }
       },
       typeSpecificData: {
-        default: "/Downloads",
-        photo: "/Photos",
-        screenshot: "/Screenshots"
+        default: "Downloads",
+        photo: "Photos",
+        screenshot: "Screenshots"
       },
     },
 
@@ -70,13 +71,13 @@ var PlexusStorageServices = {
                           OS.Path.join(OS.Constants.Path.macUserLibDir, "Application Support/Google/Drive") :
                           '' },
       icon: {
-        get default() { return getIconURI("gdrive_128x128.png") },
+        get default() { return getIconURI("gdrive_18x18.png") },
         get tiny() { return getIconURI("gdrive_30x30.png") }
       },
       typeSpecificData: {
-        default: "/Downloads",
-        photo: "/Photos",
-        screenshot: "/Screenshots"
+        default: "Downloads",
+        photo: "Photos",
+        screenshot: "Screenshots"
       },
     },
 
@@ -86,19 +87,36 @@ var PlexusStorageServices = {
                           OS.Path.join(OS.Constants.Path.winAppDataDir, "Local\Google\Drive") :
                           '' },
       icon: {
-        get default() { return getIconURI("gdrive_128x128.png") },
+        get default() { return getIconURI("gdrive_18x18.png") },
         get tiny() { return getIconURI("gdrive_30x30.png") }
       },
       typeSpecificData: {
-        default: "/Downloads",
-        photo: "/Photos",
-        screenshot: "/Screenshots"
+        default: "Downloads",
+        photo: "Photos",
+        screenshot: "Screenshots"
       },
     },
 };
 
 this.PlexusServices = {
   _cloudStorage: PlexusStorageServices,
+
+  getDisplayName(key) {
+    let storage = this._cloudStorage[key];
+    return storage ? storage.displayName : null;
+  },
+
+  getIconURLBySize(key, size) {
+     let storage = this._cloudStorage[key];
+     return storage ? storage.icon[size] : null;
+  },
+
+  getFolderPathByType(key, type) {
+    let storage = this._cloudStorage[key];
+    return storage ?
+      OS.Path.join(storage.path, storage.typeSpecificData[type]) :
+      null;
+  },
 
   /**
    *
@@ -196,10 +214,11 @@ this.PlexusServices = {
    */
   setCurrentStorageService(key) {
     Services.prefs.setIntPref("browser.download.folderList", 2);
-    // TBD: Dynamically populate by getting value
-    // from PlexusStorageServices metadata
-    let downloadDir;
-    downloadDir = FileUtils.getDir("Home", ["Dropbox"]);
+
+    // Use to the key to retrieve default download folder path from
+    // PlexusServicesStorage
+    let downloadDir = FileUtils.File(this.getFolderPathByType(key, 'default'));
+
     // Using download directory downloadDir.path
     Services.prefs.setComplexValue("browser.download.dir", Ci.nsIFile, downloadDir);
     Services.prefs.setCharPref("plexus.services.storage", key);
