@@ -60,6 +60,8 @@ var Plexus = {
               }).catch((reason) => { console.log('Handle rejected promise (' + reason + ') here.'); });
             }
           } else {
+            // Set Annotation for this download from here or it should be done from back-end
+            //
             console.log('User has preferred storage service set in nightly');
           }
         },
