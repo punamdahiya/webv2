@@ -24,6 +24,9 @@
           <xul:image class="downloadTypeIcon"
                      validate="always"
                      xbl:inherits="src=image"/>
+          <xul:image class="storageTypeIcon"
+                     validate="always"
+                     xbl:inherits="src=storage"/>
           <xul:image class="downloadBlockedBadge" />
         </xul:stack>
         <xul:vbox pack="center"

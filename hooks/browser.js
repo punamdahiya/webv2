@@ -1561,6 +1561,7 @@ var gBrowserInit = {
 
       SidebarUI.startDelayedLoad();
       SocialUI.init();
+      CloudStorageUI.init();
 
       // Start monitoring slow add-ons
       AddonWatcher.init();

@@ -1,50 +1,35 @@
 # Webv2
-**Instructions to test storage modules in Firefox nightly**
+**Instructions to build and test cloud storage in nightly**
 
 ### New files
-* Save PlexusServices.jsm and PlexusStorage.jsm in folder mozilla-central/js/xpconnect/loader
-* Create new folder plexus at /browser/base/content/ and save icon files in it.
-* Save browser-plexus.js in folder /browser/base/content/
+**browser/base/content/cloudstorage/dropbox_18x18.png**  
+**browser/base/content/cloudstorage/cloudstorage.js**  
+**toolkit/modules/CloudStorage.jsm**  
 
 
 ### Existing files hook
 
-**js/xpconnect/loader/moz.build**
-* Include module names in mozilla-central/js/xpconnect/loader/moz.build as shown below:
-
-`EXTRA_JS_MODULES += [`  
-    `'ISO8601DateUtils.jsm',`  
-    `'PlexusServices.jsm',`  
-    `'PlexusStorage.jsm',`  
-    `'XPCOMUtils.jsm',`  
-`]`  
+**toolkit/modules/moz.build**  
 
 
-**browser/base/jar.mn**
-* Update browser/base/jar.mn as below so that its accessible via chrome URL 'chrome://browser/content/plexus/filename'  
-
-  `content/browser/pageinfo/security.js          (content/pageinfo/security.js)`  
-  `content/browser/plexus/dropbox_128x128.png    (content/plexus/dropbox_128x128.png)`  
-  `content/browser/sync/aboutSyncTabs.xul        (content/sync/aboutSyncTabs.xul)`  
-
+**browser/base/jar.mn**  
 **browser/base/content/global-scripts.inc**
-* Include browser-plexus.js in global scripts  
-
-`<script type="application/javascript" src="chrome://browser/content/browser-places.js"/>`  
-`<script type="application/javascript" src="chrome://browser/content/browser-plexus.js"/>`  
-`<script type="application/javascript" src="chrome://browser/content/browser-plugins.js"/>`  
-
+* Include cloudstorage.js in global scripts  
 
 **browser/base/content/browser.js**
-* Hook Plexus.init() at Line 1564
+* Hook CloudStorageUI.init() at Line 1564
 
-`SocialUI.init();`  
-`Plexus.init();`  
+**browser/components/downloads/DownloadsViewUI.jsm**  
+**browser/components/downloads/content/downloads.js**  
 
+**browser/components/downloads/content/download.xml**  
+**browser/components/downloads/content/downloadsOverlay.xul**  
+**browser/themes/shared/downloads/allDownloadsViewOverlay.inc.css**  
+**browser/themes/shared/downloads/downloads.inc.css**  
+
+* Use nightly code base from commit https://hg.mozilla.org/mozilla-central/file/e03e0c60462c/ and override above files from /hooks 
 
 ## Build
-* Build and run nightly using ./mach build and run
+* Build and run nightly using ./mach build and run.
 
-* Use scratchpad to test imported module in browser context. See js/example.js to import and test API exposed in PlexusServices Module
-
-* To view storage notification, install a storage service e.g. dropbox on your machine. Run nightly and download file, notification should show up once per session
+* To view storage notification, install a storage service e.g. dropbox on your machine. Run nightly and download file, notification show up on first download once per session
